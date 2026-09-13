@@ -27,8 +27,11 @@ class Dict_AdaptiveQuestion(BaseModel):
     question_id: int
     topic: str
     question_text: str
-    options: List[str]
-    is_followup: bool
+    question_type: str = "MCQ"
+    programming_language: Optional[str] = None
+    code_template: Optional[str] = None
+    options: List[str] = []
+    is_followup: bool = False
 
 class AdaptiveAnswerRequest(BaseModel):
     session_id: int
@@ -91,14 +94,21 @@ async def start_adaptive_session(
 
     # Generate 1st question for 1st topic avoiding seen questions
     first_topic = skills[0]
-    q_data = generate_question_data(first_topic, is_followup=False, seen_texts=seen_texts)
+    q_data = generate_question_data(first_topic, is_followup=False, seen_texts=seen_texts, allow_coding=True)
+
+    from app.db.models import QuestionType
+    q_type_str = q_data.get("question_type", "MCQ")
+    q_type_enum = QuestionType.CODING if q_type_str == "CODING" else QuestionType.MCQ
 
     q_record = AdaptiveQuestion(
         session_id=session.id,
         question_text=q_data["text"],
         topic=first_topic,
         difficulty="Medium",
-        options_json=json.dumps(q_data["options"]),
+        question_type=q_type_enum,
+        programming_language=q_data.get("programming_language"),
+        code_template=q_data.get("code_template"),
+        options_json=json.dumps(q_data.get("options", [])),
         evaluation_status=EvaluationStatus.PENDING,
         is_followup=False
     )
@@ -114,7 +124,10 @@ async def start_adaptive_session(
             question_id=q_record.id,
             topic=q_record.topic,
             question_text=q_record.question_text,
-            options=json.loads(q_record.options_json),
+            question_type=q_record.question_type.value if hasattr(q_record.question_type, "value") else str(q_record.question_type),
+            programming_language=q_record.programming_language,
+            code_template=q_record.code_template,
+            options=json.loads(q_record.options_json) if q_record.options_json else [],
             is_followup=q_record.is_followup
         )
     )
@@ -140,10 +153,22 @@ async def submit_adaptive_answer(
     if session.status != AttemptStatus.IN_PROGRESS:
         raise HTTPException(status_code=400, detail="Session is already completed")
 
-    # Evaluate answer
+    # Evaluate answer using the stored question metadata
     skills = json.loads(session.target_skills) if session.target_skills else ["Python"]
     current_topic = question.topic
-    q_data = generate_question_data(current_topic, is_followup=question.is_followup)
+    
+    stored_options = json.loads(question.options_json) if question.options_json else []
+    q_type_str = question.question_type.value if hasattr(question.question_type, "value") else str(question.question_type)
+    
+    q_data = {
+        "text": question.question_text,
+        "question_type": q_type_str,
+        "programming_language": question.programming_language,
+        "code_template": question.code_template,
+        "options": stored_options,
+        "correct_idx": 0,
+        "keywords": [w.lower() for w in question.question_text.split() if len(w) > 3]
+    }
 
     eval_status, confidence_score, feedback = evaluate_candidate_answer(
         current_topic, q_data, req.candidate_answer
@@ -187,13 +212,20 @@ async def submit_adaptive_answer(
         )
         seen_texts = set(past_qs_res.scalars().all())
 
-        next_q_data = generate_question_data(next_topic, is_followup=next_is_followup, seen_texts=seen_texts)
+        from app.db.models import QuestionType
+        next_q_data = generate_question_data(next_topic, is_followup=next_is_followup, seen_texts=seen_texts, allow_coding=True)
+        next_q_type_str = next_q_data.get("question_type", "MCQ")
+        next_q_type_enum = QuestionType.CODING if next_q_type_str == "CODING" else QuestionType.MCQ
+
         new_q_record = AdaptiveQuestion(
             session_id=session.id,
             question_text=next_q_data["text"],
             topic=next_topic,
             difficulty="Easy" if next_is_followup else "Medium",
-            options_json=json.dumps(next_q_data["options"]),
+            question_type=next_q_type_enum,
+            programming_language=next_q_data.get("programming_language"),
+            code_template=next_q_data.get("code_template"),
+            options_json=json.dumps(next_q_data.get("options", [])),
             evaluation_status=EvaluationStatus.PENDING,
             is_followup=next_is_followup
         )
@@ -205,7 +237,10 @@ async def submit_adaptive_answer(
             question_id=new_q_record.id,
             topic=new_q_record.topic,
             question_text=new_q_record.question_text,
-            options=json.loads(new_q_record.options_json),
+            question_type=new_q_record.question_type.value if hasattr(new_q_record.question_type, "value") else str(new_q_record.question_type),
+            programming_language=new_q_record.programming_language,
+            code_template=new_q_record.code_template,
+            options=json.loads(new_q_record.options_json) if new_q_record.options_json else [],
             is_followup=new_q_record.is_followup
         )
 
@@ -250,6 +285,9 @@ async def get_adaptive_session(
             "question_id": q.id,
             "topic": q.topic,
             "question_text": q.question_text,
+            "question_type": q.question_type.value if hasattr(q.question_type, "value") else str(q.question_type),
+            "programming_language": q.programming_language,
+            "code_template": q.code_template,
             "options": options,
             "candidate_answer": q.candidate_answer,
             "confidence_score": q.confidence_score,

@@ -88,6 +88,7 @@ class Question(Base):
     code_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     programming_language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # python, javascript, cpp, sql
     test_cases: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # JSON test cases array
+    topic: Mapped[Optional[str]] = mapped_column(String(100), nullable=True) # e.g. Java, HTML, CSS, Django, Node.js, AWS, RAG, etc.
 
     assessment: Mapped["Assessment"] = relationship("Assessment", back_populates="questions")
     options: Mapped[List["Option"]] = relationship("Option", back_populates="question", cascade="all, delete-orphan")
@@ -177,6 +178,8 @@ class AdaptiveQuestion(Base):
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(50), default="Medium")
     question_type: Mapped[QuestionType] = mapped_column(SQLEnum(QuestionType), default=QuestionType.MCQ, nullable=False)
+    programming_language: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    code_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     options_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # JSON array string of option choices
     candidate_answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     confidence_score: Mapped[float] = mapped_column(Float, default=0.0) # 0.0 - 1.0

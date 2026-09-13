@@ -13,8 +13,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 bg-[#080c14]/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Brand Logo */}
-        <Link href={user?.role === "ADMIN" ? "/admin" : "/dashboard"} className="flex items-center space-x-3 group">
+        {/* Brand Logo - Always leads back to Home/Landing page */}
+        <Link href="/" className="flex items-center space-x-3 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-glow group-hover:scale-105 transition-transform">
             <Award className="w-6 h-6 text-white" />
           </div>
@@ -30,6 +30,10 @@ export default function Navbar() {
 
         {/* Role-Based Navigation Links */}
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-slate-300">
+          <Link href="/" className="hover:text-white transition-colors">
+            Home
+          </Link>
+
           {user?.role === "ADMIN" ? (
             <>
               {/* Admin Exclusive Navigation */}
@@ -43,7 +47,7 @@ export default function Navbar() {
                 <span>Candidate View</span>
               </Link>
             </>
-          ) : (
+          ) : user?.role === "CANDIDATE" ? (
             <>
               {/* Candidate Navigation */}
               <Link href="/dashboard" className="hover:text-white transition-colors flex items-center space-x-1.5">
@@ -56,7 +60,7 @@ export default function Navbar() {
                 <span>AI Resume Interview</span>
               </Link>
             </>
-          )}
+          ) : null}
 
           {/* Candidate / Admin Navigation items end */}
         </nav>
@@ -89,11 +93,12 @@ export default function Navbar() {
                 </span>
               </div>
               <button
-                onClick={logout}
-                title="Logout"
-                className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                onClick={() => logout(true)}
+                title="Sign Out & Return Home"
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30 transition-all"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           ) : (

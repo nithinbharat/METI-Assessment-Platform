@@ -84,7 +84,8 @@ async def get_attempt_result(
                 max_points=q.points,
                 explanation=q.explanation,
                 correct_option_id=correct_opt.id if correct_opt else None,
-                programming_language=q.programming_language
+                programming_language=q.programming_language,
+                topic=q.topic
             )
         )
 
@@ -174,9 +175,9 @@ async def start_attempt(
                 except Exception:
                     pass
 
-        # Prioritize unseen questions
+        # Select all active assessment questions (or target count) to cover every required topic
         unseen_questions = [q for q in all_questions if q.id not in recently_used_ids]
-        target_count = min(5, len(all_questions))
+        target_count = len(all_questions)
 
         if len(unseen_questions) >= target_count:
             selected_questions = random.sample(unseen_questions, target_count)
@@ -213,10 +214,8 @@ async def start_attempt(
     ordered_ids = json.loads(attempt.question_order) if attempt.question_order else [q.id for q in assessment.questions]
     ordered_questions = [q_map[qid] for qid in ordered_ids if qid in q_map]
     
-    # Append any questions missing from saved order (safety fallback)
-    for q in assessment.questions:
-        if q.id not in ordered_ids:
-            ordered_questions.append(q)
+    if not ordered_questions:
+        ordered_questions = [q for q in assessment.questions if q.question_type != QuestionType.FILE_UPLOAD]
 
     # Reconstruct option order using persisted option_order dictionary
     opt_order_map = json.loads(attempt.option_order) if attempt.option_order else {}
@@ -247,6 +246,7 @@ async def start_attempt(
                 points=q.points,
                 code_template=q.code_template,
                 programming_language=q.programming_language,
+                topic=q.topic,
                 options=candidate_options
             )
         )

@@ -51,6 +51,20 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 "keywords": ["wrap", "wrapper", "metadata", "docstring", "function", "decorator"]
             }
         ],
+        "coding": [
+            {
+                "text": "Write a Python function `reverse_words(sentence: str) -> str` that takes a string of words separated by spaces and returns the sentence with words in reverse order.",
+                "programming_language": "python",
+                "code_template": "# Write your Python solution below\ndef reverse_words(sentence: str) -> str:\n    # Your code here\n    pass\n",
+                "keywords": ["split", "reverse", "join", "reversed"]
+            },
+            {
+                "text": "Write a Python function `count_vowels(s: str) -> int` that returns the total count of vowels (a, e, i, o, u) in a string `s`.",
+                "programming_language": "python",
+                "code_template": "# Write your Python solution below\ndef count_vowels(s: str) -> int:\n    # Your code here\n    pass\n",
+                "keywords": ["for", "in", "count", "vowel", "return"]
+            }
+        ],
         "followup": [
             {
                 "text": "Follow-up Clarification (Python Fundamentals): Which built-in function returns a unique integer identifier for a memory reference of an object?",
@@ -100,6 +114,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 ],
                 "correct_idx": 0,
                 "keywords": ["background", "email", "response", "non-blocking", "task"]
+            }
+        ],
+        "coding": [
+            {
+                "text": "Write a FastAPI GET route `/health` that returns a JSON response `{'status': 'ok', 'service': 'fastapi'}`.",
+                "programming_language": "python",
+                "code_template": "# Write your FastAPI route below\nfrom fastapi import FastAPI\n\napp = FastAPI()\n\n# Your code here\n",
+                "keywords": ["@app.get", "/health", "async", "def", "return"]
             }
         ],
         "followup": [
@@ -153,6 +175,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 "keywords": ["function", "callback", "value", "memoize", "usecallback"]
             }
         ],
+        "coding": [
+            {
+                "text": "Write a React component `Counter()` in JavaScript using `useState` that initializes `count` to 0 and renders buttons to increment and decrement the count.",
+                "programming_language": "javascript",
+                "code_template": "// Write your React component below\nimport React, { useState } from 'react';\n\nexport function Counter() {\n    // Your code here\n    pass\n}\n",
+                "keywords": ["useState", "count", "button", "onClick", "return"]
+            }
+        ],
         "followup": [
             {
                 "text": "Follow-up Clarification (React Hooks): Which hook is used to manage mutable local component state?",
@@ -193,6 +223,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 "keywords": ["static", "regeneration", "background", "revalidate", "ssr", "isr"]
             }
         ],
+        "coding": [
+            {
+                "text": "Write a Next.js Server Component `UserProfile({ userId })` that asynchronously fetches data from `https://api.example.com/users/${userId}` and renders user name in an `<h1>`.",
+                "programming_language": "javascript",
+                "code_template": "// Write your Next.js Server Component below\nexport default async function UserProfile({ userId }) {\n    // Your code here\n    pass\n}\n",
+                "keywords": ["fetch", "await", "return", "h1"]
+            }
+        ],
         "followup": [
             {
                 "text": "Follow-up Clarification (Next.js Routing): Which standard filename defines a route's visual UI view in App Router?",
@@ -225,6 +263,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 ],
                 "correct_idx": 0,
                 "keywords": ["atomicity", "consistency", "isolation", "durability", "acid"]
+            }
+        ],
+        "coding": [
+            {
+                "text": "Write an SQL query to select `department`, COUNT(*) as `employee_count` from `employees` group by `department` having COUNT(*) >= 5.",
+                "programming_language": "sql",
+                "code_template": "-- Write your SQL query below\n",
+                "keywords": ["select", "count", "from", "group by", "having"]
             }
         ],
         "followup": [
@@ -261,6 +307,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 "keywords": ["multi-stage", "builder", "copy", "artifact", "binary", "tiny"]
             }
         ],
+        "coding": [
+            {
+                "text": "Write a Dockerfile for a Python application based on `python:3.11-slim`, copying `requirements.txt`, executing `pip install -r requirements.txt`, copying app source, and exposing port 8000.",
+                "programming_language": "dockerfile",
+                "code_template": "# Write your Dockerfile below\n",
+                "keywords": ["from", "copy", "run", "pip", "expose", "cmd"]
+            }
+        ],
         "followup": [
             {
                 "text": "Follow-up Clarification (Docker CLI): Which command builds a Docker image from a local Dockerfile?",
@@ -293,6 +347,14 @@ TOPIC_KNOWLEDGE_BANK: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
                 ],
                 "correct_idx": 0,
                 "keywords": ["underfitting", "overfitting", "noise", "bias", "variance"]
+            }
+        ],
+        "coding": [
+            {
+                "text": "Write a Python function `calculate_mean(numbers: list) -> float` that calculates and returns the arithmetic mean of a list of numbers.",
+                "programming_language": "python",
+                "code_template": "# Write your Python solution below\ndef calculate_mean(numbers: list) -> float:\n    # Your code here\n    pass\n",
+                "keywords": ["sum", "len", "return"]
             }
         ],
         "followup": [
@@ -342,7 +404,12 @@ GENERIC_TEMPLATES = [
     }
 ]
 
-def generate_question_data(topic: str, is_followup: bool = False, seen_texts: Set[str] = None) -> Dict[str, Any]:
+def generate_question_data(
+    topic: str,
+    is_followup: bool = False,
+    seen_texts: Set[str] = None,
+    allow_coding: bool = False
+) -> Dict[str, Any]:
     if seen_texts is None:
         seen_texts = set()
 
@@ -356,12 +423,33 @@ def generate_question_data(topic: str, is_followup: bool = False, seen_texts: Se
                 break
 
     if bank_entry:
+        # Check if coding question should be selected
+        coding_pool = bank_entry.get("coding", [])
+        if allow_coding and not is_followup and coding_pool and (random.random() < 0.5):
+            unseen_coding = [q for q in coding_pool if q["text"] not in seen_texts]
+            chosen = random.choice(unseen_coding) if unseen_coding else random.choice(coding_pool)
+            return {
+                "text": chosen["text"],
+                "question_type": "CODING",
+                "programming_language": chosen.get("programming_language", "python"),
+                "code_template": chosen.get("code_template", "# Write your code below\n"),
+                "options": [],
+                "correct_idx": 0,
+                "keywords": chosen.get("keywords", [])
+            }
+
         pool = bank_entry["followup"] if is_followup else bank_entry["primary"]
         unseen = [q for q in pool if q["text"] not in seen_texts]
-        if unseen:
-            return random.choice(unseen)
-        else:
-            return random.choice(pool)
+        chosen = random.choice(unseen) if unseen else random.choice(pool)
+        return {
+            "text": chosen["text"],
+            "question_type": "MCQ",
+            "programming_language": None,
+            "code_template": None,
+            "options": chosen["options"],
+            "correct_idx": chosen["correct_idx"],
+            "keywords": chosen.get("keywords", [])
+        }
     else:
         # Dynamic generic topic generation with unseen template variation
         unseen_templates = [t for t in GENERIC_TEMPLATES if t["text"].format(topic=topic_clean) not in seen_texts]
@@ -369,6 +457,9 @@ def generate_question_data(topic: str, is_followup: bool = False, seen_texts: Se
         
         return {
             "text": chosen_template["text"].format(topic=topic_clean),
+            "question_type": "MCQ",
+            "programming_language": None,
+            "code_template": None,
             "options": [opt.format(topic=topic_clean) for opt in chosen_template["options"]],
             "correct_idx": chosen_template["correct_idx"],
             "keywords": chosen_template["keywords"]
@@ -384,10 +475,43 @@ def evaluate_candidate_answer(
     if not answer_clean:
         return EvaluationStatus.NEEDS_CLARIFICATION, 0.0, "No answer provided."
 
-    correct_option_text = question_data["options"][question_data["correct_idx"]]
+    q_type = question_data.get("question_type", "MCQ")
+    options = question_data.get("options") or []
+
+    # --- 1. CODING QUESTION EVALUATION ---
+    if q_type == "CODING" or not options:
+        template = (question_data.get("code_template") or "").strip()
+        if answer_clean == template or answer_clean.lower() in ("pass", "pass\n", "// write your code here"):
+            return EvaluationStatus.NEEDS_CLARIFICATION, 0.1, f"Only starter boilerplate submitted for {topic}. Please type your actual code solution."
+        
+        lang = (question_data.get("programming_language") or "python").lower()
+        if lang == "python":
+            try:
+                compile(answer_clean, "<string>", "exec")
+            except SyntaxError as e:
+                return EvaluationStatus.NEEDS_CLARIFICATION, 0.35, f"Syntax Error: {e.msg} at line {e.lineno}. Please fix the syntax."
+
+        keywords = question_data.get("keywords", [])
+        matched_keywords = sum(1 for kw in keywords if kw.lower() in answer_clean.lower())
+        keyword_score = (matched_keywords / len(keywords)) if keywords else 0.5
+        
+        if keyword_score >= 0.4 or len(answer_clean) > 40:
+            confidence_score = min(0.95, round(0.70 + (keyword_score * 0.25), 2))
+            status = EvaluationStatus.CONFIDENT
+            feedback = f"🌟 High Confidence ({int(confidence_score * 100)}% Match)! Your {topic} code solution is syntactically sound and implements required logic."
+        else:
+            confidence_score = max(0.30, round(keyword_score * 0.6, 2))
+            status = EvaluationStatus.NEEDS_CLARIFICATION
+            feedback = f"🔍 Needs Clarification ({int(confidence_score * 100)}% Match). Your code solution for {topic} is missing key logic or syntax elements."
+
+        return status, confidence_score, feedback
+
+    # --- 2. MULTIPLE CHOICE QUESTION EVALUATION ---
+    correct_idx = question_data.get("correct_idx", 0)
+    correct_option_text = options[correct_idx] if len(options) > correct_idx else ""
     keywords = question_data.get("keywords", [])
 
-    is_exact_option = answer_clean.lower() in [opt.lower() for opt in question_data["options"]]
+    is_exact_option = answer_clean.lower() in [opt.lower() for opt in options]
     is_correct_option = (answer_clean.lower() == correct_option_text.lower())
     
     matched_keywords = sum(1 for kw in keywords if kw.lower() in answer_clean.lower())

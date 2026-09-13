@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
-import { UserPlus, Mail, Lock, User as UserIcon, Shield, AlertCircle } from "lucide-react";
+import { UserPlus, Mail, Lock, User as UserIcon, Shield, AlertCircle, ArrowLeft } from "lucide-react";
 import { fetchApi } from "@/lib/api";
 
 export default function RegisterPage() {
@@ -14,8 +14,24 @@ export default function RegisterPage() {
   const [role, setRole] = useState<"CANDIDATE" | "ADMIN">("CANDIDATE");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { user, login, logout } = useAuth();
   const router = useRouter();
+
+  // Reset any leftover session and clear browser autofill on load
+  useEffect(() => {
+    if (user) {
+      logout(false);
+    }
+    setFullName("");
+    setEmail("");
+    setPassword("");
+    const timer = setTimeout(() => {
+      setFullName("");
+      setEmail("");
+      setPassword("");
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +81,16 @@ export default function RegisterPage() {
     <div className="max-w-md mx-auto py-8">
       <div className="glass-card p-8 rounded-3xl space-y-6">
         
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto text-cyan-400">
             <UserPlus className="w-6 h-6" />
@@ -80,7 +106,25 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+          {/* Decoy hidden fields to absorb browser credential autofill */}
+          <input
+            type="text"
+            name="fake_user_name_prevent_autofill"
+            style={{ position: "absolute", opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: "none" }}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+          />
+          <input
+            type="password"
+            name="fake_password_prevent_autofill"
+            style={{ position: "absolute", opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: "none" }}
+            tabIndex={-1}
+            autoComplete="new-password"
+            aria-hidden="true"
+          />
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Full Name
@@ -89,7 +133,12 @@ export default function RegisterPage() {
               <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="text"
+                name="meti_reg_fullname"
+                id="meti_reg_fullname"
                 required
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
@@ -106,7 +155,12 @@ export default function RegisterPage() {
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="email"
+                name="meti_reg_email"
+                id="meti_reg_email"
                 required
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="jane@organization.org"
@@ -123,7 +177,12 @@ export default function RegisterPage() {
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="password"
+                name="meti_reg_password"
+                id="meti_reg_password"
                 required
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-form-type="other"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

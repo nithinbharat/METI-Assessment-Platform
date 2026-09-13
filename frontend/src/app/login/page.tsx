@@ -1,18 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { user, login, logout } = useAuth();
   const router = useRouter();
+
+  // Reset any leftover session and clear browser autofill on load
+  useEffect(() => {
+    if (user) {
+      logout(false);
+    }
+    setEmail("");
+    setPassword("");
+    const timer = setTimeout(() => {
+      setEmail("");
+      setPassword("");
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +67,16 @@ export default function LoginPage() {
     <div className="max-w-md mx-auto py-12">
       <div className="glass-card p-8 rounded-3xl space-y-6">
         
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
+          </Link>
+        </div>
+
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center mx-auto text-brand-400">
             <Lock className="w-6 h-6" />
@@ -68,7 +92,25 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+          {/* Decoy hidden fields to absorb browser credential autofill */}
+          <input
+            type="text"
+            name="fake_user_name_prevent_autofill"
+            style={{ position: "absolute", opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: "none" }}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+          />
+          <input
+            type="password"
+            name="fake_password_prevent_autofill"
+            style={{ position: "absolute", opacity: 0, height: 0, width: 0, zIndex: -1, pointerEvents: "none" }}
+            tabIndex={-1}
+            autoComplete="new-password"
+            aria-hidden="true"
+          />
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Email Address
@@ -77,7 +119,12 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="email"
+                name="meti_login_email"
+                id="meti_login_email"
                 required
+                autoComplete="off"
+                data-lpignore="true"
+                data-form-type="other"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@organization.org"
@@ -94,7 +141,12 @@ export default function LoginPage() {
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="password"
+                name="meti_login_password"
+                id="meti_login_password"
                 required
+                autoComplete="new-password"
+                data-lpignore="true"
+                data-form-type="other"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

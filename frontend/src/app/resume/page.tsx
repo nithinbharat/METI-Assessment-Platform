@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getAuthToken } from "@/lib/api";
 import { 
   FileUp, Sparkles, UploadCloud, CheckCircle2, 
   ArrowRight, ShieldCheck, Cpu, FileText, Play 
@@ -16,7 +16,7 @@ interface ResumeProfile {
 }
 
 export default function ResumeUploadPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [file, setFile] = useState<File | null>(null);
@@ -25,6 +25,13 @@ export default function ResumeUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto redirect to landing page if logged out
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     async function loadResumeProfile() {
@@ -59,10 +66,11 @@ export default function ResumeUploadPage() {
         formData.append("raw_text", rawText.trim());
       }
 
+      const authToken = getAuthToken();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/resume/upload`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("meti_token")}`,
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: formData,
       });
@@ -91,6 +99,15 @@ export default function ResumeUploadPage() {
       alert(err.message || "Failed to initialize AI Adaptive Interview.");
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="animate-spin w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-400">Verifying session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 py-4">

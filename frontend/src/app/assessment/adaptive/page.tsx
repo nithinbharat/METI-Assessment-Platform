@@ -8,7 +8,7 @@ import {
   Sparkles, CheckCircle2, AlertTriangle, ArrowRight,
   HelpCircle, Cpu, Trophy, Check,
   Camera, Maximize, Shield, ShieldAlert, VideoOff,
-  UserCheck, UserX, Users
+  UserCheck, UserX, Users, Code, Play, Terminal
 } from "lucide-react";
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 
@@ -18,6 +18,9 @@ interface Question {
   question_id: number;
   topic: string;
   question_text: string;
+  question_type?: "MCQ" | "CODING";
+  programming_language?: string;
+  code_template?: string;
   options: string[];
   is_followup: boolean;
 }
@@ -34,6 +37,9 @@ interface SessionTrace {
   question_id: number;
   topic: string;
   question_text: string;
+  question_type?: "MCQ" | "CODING";
+  programming_language?: string;
+  code_template?: string;
   options: string[];
   candidate_answer: string;
   confidence_score: number;
@@ -72,6 +78,41 @@ function AdaptiveAssessmentContent() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Coding Sandbox execution state
+  const [runningCode, setRunningCode] = useState(false);
+  const [codeOutput, setCodeOutput] = useState<{ stdout: string; stderr: string; execution_time_ms: number; status: string } | null>(null);
+
+  const handleRunCode = async () => {
+    const code = candidateAnswer || currentQuestion?.code_template || "";
+    if (!code.trim()) return;
+
+    setRunningCode(true);
+    setCodeOutput(null);
+
+    try {
+      const res = await fetchApi<{ stdout: string; stderr: string; execution_time_ms: number; status: string }>(
+        "/assessments/run-code",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            code,
+            language: currentQuestion?.programming_language || "python",
+          }),
+        }
+      );
+      setCodeOutput(res);
+    } catch (err: any) {
+      setCodeOutput({
+        stdout: "",
+        stderr: err.message || "Code execution failed",
+        execution_time_ms: 0,
+        status: "ERROR",
+      });
+    } finally {
+      setRunningCode(false);
+    }
+  };
 
   // Security flow: webcam → fullscreen → interview (sequential)
   const [securityStep, setSecurityStep] = useState<SecurityStep>("idle");
@@ -326,9 +367,15 @@ function AdaptiveAssessmentContent() {
               question_id: pendingQ.question_id,
               topic: pendingQ.topic,
               question_text: pendingQ.question_text,
+              question_type: pendingQ.question_type || (pendingQ.options && pendingQ.options.length > 0 ? "MCQ" : "CODING"),
+              programming_language: pendingQ.programming_language,
+              code_template: pendingQ.code_template,
               options: pendingQ.options || [],
               is_followup: pendingQ.is_followup,
             });
+            if (pendingQ.code_template) {
+              setCandidateAnswer(pendingQ.code_template);
+            }
           }
           setSecurityStep("webcam");
         }
@@ -366,6 +413,8 @@ function AdaptiveAssessmentContent() {
         setSessionSummary(summary);
       } else if (data.next_question) {
         setCurrentQuestion(data.next_question);
+        setCandidateAnswer(data.next_question.code_template || "");
+        setCodeOutput(null);
       }
     } catch (err: any) {
       alert(err.message || "Failed to evaluate answer.");
@@ -716,7 +765,52 @@ function AdaptiveAssessmentContent() {
               </div>
 
               <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                {currentQuestion.options && currentQuestion.options.length > 0 ? (
+                {currentQuestion.question_type === "CODING" || !currentQuestion.options || currentQuestion.options.length === 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between bg-slate-900 px-4 py-2.5 rounded-t-xl border-t border-x border-slate-800">
+                      <div className="flex items-center space-x-2 text-xs font-mono text-cyan-300">
+                        <Code className="w-4 h-4 text-cyan-400" />
+                        <span className="uppercase">{(currentQuestion.programming_language || "python")} Sandbox</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRunCode}
+                        disabled={runningCode}
+                        className="flex items-center space-x-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-all"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>{runningCode ? "Executing..." : "Run Code"}</span>
+                      </button>
+                    </div>
+
+                    <textarea
+                      rows={10}
+                      value={candidateAnswer}
+                      onChange={(e) => setCandidateAnswer(e.target.value)}
+                      placeholder="# Type your technical code solution here..."
+                      className="w-full bg-slate-950 font-mono text-xs text-slate-100 p-4 border border-slate-800 rounded-b-xl focus:outline-none focus:border-cyan-500 leading-relaxed"
+                    />
+
+                    {/* Sandbox Terminal Output Panel */}
+                    {codeOutput && (
+                      <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-2">
+                        <div className="flex items-center justify-between text-slate-400 pb-2 border-b border-slate-800">
+                          <span className="flex items-center space-x-1">
+                            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>Execution Output</span>
+                          </span>
+                          <span>{codeOutput.execution_time_ms} ms</span>
+                        </div>
+                        {codeOutput.stdout && (
+                          <pre className="text-emerald-400 whitespace-pre-wrap">{codeOutput.stdout}</pre>
+                        )}
+                        {codeOutput.stderr && (
+                          <pre className="text-rose-400 whitespace-pre-wrap">{codeOutput.stderr}</pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <div className="space-y-3">
                     {currentQuestion.options.map((opt, idx) => {
                       const isSelected = candidateAnswer === opt;
@@ -740,19 +834,6 @@ function AdaptiveAssessmentContent() {
                         </button>
                       );
                     })}
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">
-                      Your technical answer:
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={candidateAnswer}
-                      onChange={(e) => setCandidateAnswer(e.target.value)}
-                      placeholder="Type your technical response..."
-                      className="w-full glass-input rounded-xl p-4 text-xs"
-                    />
                   </div>
                 )}
 

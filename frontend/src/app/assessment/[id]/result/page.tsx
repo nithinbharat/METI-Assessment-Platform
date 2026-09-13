@@ -19,6 +19,7 @@ interface AnswerDetail {
   max_points: number;
   explanation: string | null;
   correct_option_id: number | null;
+  topic?: string | null;
 }
 
 interface AttemptResult {
@@ -181,7 +182,14 @@ export default function AssessmentResultPage() {
                   }`}>
                     {idx + 1}
                   </div>
-                  <h3 className="text-base font-semibold text-white leading-snug">{ans.question_text}</h3>
+                  <div className="space-y-1">
+                    {ans.topic && (
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-semibold tracking-wide">
+                        {ans.topic}
+                      </span>
+                    )}
+                    <h3 className="text-base font-semibold text-white leading-snug">{ans.question_text}</h3>
+                  </div>
                 </div>
 
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${

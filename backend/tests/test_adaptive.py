@@ -32,3 +32,28 @@ def test_ai_evaluator_low_confidence():
     assert status == EvaluationStatus.NEEDS_CLARIFICATION
     assert score < 0.70
     assert "Needs Clarification" in feedback
+
+def test_coding_question_generation_and_evaluation():
+    coding_q = generate_question_data("Python", is_followup=False, allow_coding=True)
+    assert coding_q["question_type"] in ("CODING", "MCQ")
+    
+    # Test evaluation with coding question structure
+    sample_coding_q = {
+        "text": "Write a Python function reverse_words(sentence: str) -> str",
+        "question_type": "CODING",
+        "programming_language": "python",
+        "code_template": "# Write your Python solution below\ndef reverse_words(sentence: str) -> str:\n    pass\n",
+        "options": [],
+        "keywords": ["split", "reverse", "join"]
+    }
+    
+    # Submitting empty or unmodified template yields clarification
+    status, score, feedback = evaluate_candidate_answer("Python", sample_coding_q, sample_coding_q["code_template"])
+    assert status == EvaluationStatus.NEEDS_CLARIFICATION
+    assert score <= 0.35
+    
+    # Submitting valid implementation yields high confidence
+    valid_code = "def reverse_words(sentence: str) -> str:\n    return ' '.join(reversed(sentence.split()))"
+    status, score, feedback = evaluate_candidate_answer("Python", sample_coding_q, valid_code)
+    assert status == EvaluationStatus.CONFIDENT
+    assert score >= 0.70

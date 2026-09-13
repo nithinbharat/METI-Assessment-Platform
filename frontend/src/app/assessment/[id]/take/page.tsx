@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { fetchApi } from "@/lib/api";
+import { fetchApi, getAuthToken } from "@/lib/api";
 import { 
   Clock, AlertTriangle, CheckCircle, Flag, ChevronLeft, 
   ChevronRight, Send, CheckCircle2, AlertCircle, Code, 
@@ -23,6 +23,7 @@ interface Question {
   points: number;
   code_template?: string;
   programming_language?: string;
+  topic?: string;
   options: Option[];
 }
 
@@ -152,14 +153,8 @@ export default function TakeAssessmentPage() {
           setShowFullscreenModal(false);
         }
 
-        // Pre-populate coding templates if present
-        const initialAnswers: Record<number, { text_response?: string }> = {};
-        data.questions.forEach((q) => {
-          if (q.question_type === "CODING" && q.code_template) {
-            initialAnswers[q.id] = { text_response: q.code_template };
-          }
-        });
-        setAnswers(initialAnswers);
+        // Answers start empty; candidates must actively type code or select options
+        setAnswers({});
       } catch (err: any) {
         setError(err.message || "Failed to initialize test room.");
       } finally {
@@ -493,7 +488,7 @@ export default function TakeAssessmentPage() {
       formData.append("file", file);
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const token = typeof window !== "undefined" ? localStorage.getItem("meti_token") : null;
+      const token = getAuthToken();
 
       const res = await fetch(`${apiUrl}/api/v1/assessments/upload-solution`, {
         method: "POST",
@@ -635,12 +630,27 @@ export default function TakeAssessmentPage() {
     return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  const answeredCount = Object.keys(answers).filter(
-    (k) =>
-      answers[Number(k)]?.selected_option_id ||
-      answers[Number(k)]?.text_response ||
-      answers[Number(k)]?.file_path
-  ).length;
+  const isQuestionAnswered = (q: Question): boolean => {
+    const ans = answers[q.id];
+    if (!ans) return false;
+    if (ans.selected_option_id !== undefined && ans.selected_option_id !== null) return true;
+    if (ans.file_path && ans.file_path.trim().length > 0) return true;
+    if (ans.text_response !== undefined && ans.text_response !== null) {
+      const trimmed = ans.text_response.trim();
+      if (!trimmed) return false;
+      if (q.question_type === "CODING") {
+        const templateTrimmed = (q.code_template || "").trim();
+        // A coding question is only answered if candidate has typed code distinct from the starter stub
+        return trimmed.length > 0 && trimmed !== templateTrimmed;
+      }
+      return trimmed.length > 0;
+    }
+    return false;
+  };
+
+  const answeredCount = attemptData
+    ? attemptData.questions.filter((q) => isQuestionAnswered(q)).length
+    : 0;
 
   const isLowTime = (timeLeftSeconds || 0) <= 120;
 
@@ -856,10 +866,7 @@ export default function TakeAssessmentPage() {
           
           <div className="grid grid-cols-5 gap-2">
             {attemptData.questions.map((q, idx) => {
-              const isAnswered =
-                !!answers[q.id]?.selected_option_id ||
-                !!answers[q.id]?.text_response ||
-                !!answers[q.id]?.file_path;
+              const isAnswered = isQuestionAnswered(q);
               const isFlagged = !!flagged[q.id];
               const isCurrent = idx === currentIndex;
 
@@ -916,6 +923,11 @@ export default function TakeAssessmentPage() {
                   <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono uppercase">
                     {currentQ.question_type}
                   </span>
+                  {currentQ.topic && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-semibold tracking-wide">
+                      {currentQ.topic}
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-xl font-bold text-white leading-snug">{currentQ.text}</h2>
               </div>

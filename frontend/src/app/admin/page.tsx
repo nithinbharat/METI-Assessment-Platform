@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { fetchApi } from "@/lib/api";
 import {
@@ -69,6 +70,7 @@ interface AnswerDetail {
   max_points: number;
   explanation: string | null;
   correct_option_id: number | null;
+  topic?: string | null;
 }
 
 interface SecurityEventLog {
@@ -102,11 +104,23 @@ interface AttemptResultResponse {
 }
 
 export default function AdminPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Auto redirect to landing page if logged out or not an admin
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.replace("/");
+      } else if (user.role !== "ADMIN") {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, authLoading, router]);
 
   // Modal States
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
@@ -173,8 +187,10 @@ export default function AdminPage() {
   const [loadingAttemptDetail, setLoadingAttemptDetail] = useState(false);
 
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    if (user?.role === "ADMIN") {
+      loadAdminData();
+    }
+  }, [user]);
 
   async function loadAdminData() {
     try {
@@ -321,6 +337,24 @@ export default function AdminPage() {
       setLoadingAttemptDetail(false);
     }
   };
+
+  if (authLoading || !user || user.role !== "ADMIN") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="animate-spin w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-400">Verifying administrator access...</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-400">Loading control center data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -574,7 +608,14 @@ export default function AdminPage() {
                             }`}>
                             {idx + 1}
                           </span>
-                          <h5 className="font-semibold text-white leading-snug">{ans.question_text}</h5>
+                          <div className="space-y-0.5">
+                            {ans.topic && (
+                              <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[9px] font-semibold">
+                                {ans.topic}
+                              </span>
+                            )}
+                            <h5 className="font-semibold text-white leading-snug">{ans.question_text}</h5>
+                          </div>
                         </div>
 
                         <span className={`px-2 py-0.5 rounded font-bold shrink-0 ${ans.is_correct ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/20 text-rose-300 border border-rose-500/30"

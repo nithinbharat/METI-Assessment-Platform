@@ -8,7 +8,7 @@ import { Award, Clock, ShieldCheck, Zap, ArrowRight, BarChart3, CheckCircle2, Sp
 import { useState } from "react";
 
 export default function Home() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const router = useRouter();
   const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
@@ -89,10 +89,10 @@ export default function Home() {
 
         <div className="mt-8 flex justify-center space-x-4">
           <Link
-            href="/dashboard"
+            href={user ? (user.role === "ADMIN" ? "/admin" : "/dashboard") : "/login"}
             className="inline-flex items-center space-x-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white px-6 py-3 rounded-xl font-semibold shadow-glow transition-all"
           >
-            <span>Explore Assessments</span>
+            <span>{user ? (user.role === "ADMIN" ? "Go to Admin Control Center" : "Go to Candidate Dashboard") : "Explore Assessments & Sign In"}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

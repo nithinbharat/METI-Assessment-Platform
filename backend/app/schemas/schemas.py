@@ -67,6 +67,7 @@ class QuestionBase(BaseModel):
     code_template: Optional[str] = None
     programming_language: Optional[str] = None # python, javascript, cpp, sql
     test_cases: Optional[str] = None # JSON test cases array
+    topic: Optional[str] = None
 
 class QuestionCreate(QuestionBase):
     options: List[OptionCreate] = []
@@ -84,6 +85,7 @@ class QuestionCandidateResponse(BaseModel):
     points: float
     code_template: Optional[str] = None
     programming_language: Optional[str] = None
+    topic: Optional[str] = None
     options: List[OptionCandidateResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -180,6 +182,7 @@ class AnswerResultDetail(BaseModel):
     explanation: Optional[str] = None
     correct_option_id: Optional[int] = None
     programming_language: Optional[str] = None
+    topic: Optional[str] = None
 
 
 # Security Event Schemas

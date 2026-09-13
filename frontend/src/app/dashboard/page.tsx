@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
@@ -32,11 +33,19 @@ interface Attempt {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [myAttempts, setMyAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto redirect to landing page if logged out
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -59,8 +68,11 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-    loadDashboardData();
-  }, []);
+
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   // Compute metrics EXCLUSIVELY on actual submitted completed attempts
   const totalAttempted = myAttempts.length;
@@ -68,6 +80,15 @@ export default function DashboardPage() {
   const avgPercentage = totalAttempted > 0
     ? (myAttempts.reduce((sum, a) => sum + a.percentage, 0) / totalAttempted).toFixed(1)
     : "0";
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
+        <p className="text-xs text-slate-400">Loading candidate dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
